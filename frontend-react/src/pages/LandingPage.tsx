@@ -31,7 +31,7 @@ export default function LandingPage() {
                className="text-sm text-white/60 hover:text-white transition-colors">
               Launch App
             </a>
-            <a href="/proofmarket.html"
+            <a href="/proofmarket.html#connect"
                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-sm font-semibold hover:opacity-90 hover:scale-105 transition-all">
               Connect Wallet <ArrowRight size={14} />
             </a>
@@ -63,7 +63,7 @@ export default function LandingPage() {
                className="flex items-center justify-center gap-2 px-8 py-4 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-bold text-lg hover:opacity-90 hover:scale-105 transition-all shadow-lg shadow-indigo-500/30">
               Open Markets <ArrowRight size={18} />
             </a>
-            <a href="/proofmarket.html"
+            <a href="/proofmarket.html#create"
                className="flex items-center justify-center gap-2 px-8 py-4 rounded-2xl border border-white/20 text-white/80 font-semibold text-lg hover:border-white/40 hover:text-white transition-all backdrop-blur-sm">
               Create Prediction
             </a>

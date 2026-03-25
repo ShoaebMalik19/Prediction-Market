@@ -685,6 +685,15 @@ function toast(msg, type='info') {
   const pad = n=>String(n).padStart(2,'0');
   document.getElementById('fdl').value =
     `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  
+  // Hash Routing Logic
+  const hash = window.location.hash.substring(1);
+  if (hash === 'create') navigate('create');
+  else if (hash === 'mystakes') navigate('mystakes');
+  else if (hash === 'connect') {
+    navigate('home'); 
+    setTimeout(()=>connectWallet(), 300);
+  }
 })();
 
 // Countdown refresh
