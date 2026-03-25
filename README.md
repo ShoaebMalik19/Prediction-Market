@@ -1,100 +1,75 @@
-# Shardeum Starter Kit
+# 🔮 ProofMarket — Bet on Experts, Not the Crowd
 
-Get your environment ready to build and deploy smart contracts on **Shardeum** — an EVM-compatible Layer 1 blockchain.
+**ProofMarket** is a decentralized prediction market built on the **Shardeum** Layer 1 EVM. It radically changes the dynamics of prediction markets by solving the "noise" problem: **Experts must stake their own SHM to post a prediction.**
 
----
-
-## Step 1 — Install Prerequisites
-
-Make sure you have the following installed:
-
-- [Node.js](https://nodejs.org/) (v18 or v20 recommended)
-- [Git](https://git-scm.com/)
-- [MetaMask](https://metamask.io/) browser extension
+No more fake gurus. Complete on-chain transparency. True skin in the game.
 
 ---
 
-## Step 2 — Add Shardeum Testnet to MetaMask
+## 🎥 Live Demo Video
 
-**Option A — Add automatically via the docs (easiest):**
-
-Go to [https://docs.shardeum.org/docs/overview/endpoints](https://docs.shardeum.org/docs/overview/endpoints) and click **"Add to Wallet"** next to the testnet.
-
-**Option B — Add manually in MetaMask:**
-
-1. Open MetaMask → click the network dropdown → **"Add a custom network"**
-2. Fill in the details below and click **Save**
-
-| Field | Value |
-|---|---|
-| Network Name | `Shardeum EVM Testnet` |
-| New RPC URL | `https://api-mezame.shardeum.org` |
-| Chain ID | `8119` |
-| Currency Symbol | `SHM` |
-| Block Explorer URL | `https://explorer-mezame.shardeum.org` |
+> **[▶️ Watch the Demo Video Here] (Replace this with your YouTube or Loom Link!)**
 
 ---
 
-## Step 3 — Get Testnet SHM (Faucet)
+## 🚀 Key Features
 
-You need testnet SHM to pay for gas fees.
-
-1. Join the Shardeum Discord: [https://discord.com/invite/shardeum](https://discord.com/invite/shardeum)
-2. Verify your account by clicking the **Shardeum emoji logo** in the server
-3. Go to the `#evm-faucet` channel: [https://discord.com/channels/933959587462254612/1423751569454661632](https://discord.com/channels/933959587462254612/1423751569454661632)
-4. Type the following command (a black box with your address will appear after you type `/faucet`):
-
-```
-/faucet [address: YOUR_METAMASK_WALLET_ADDRESS]
-```
-
-SHM will be sent to your wallet shortly after.
+*   **Skin in the Game:** Anyone can create a prediction, but it costs a minimum stake of SHM to do so. If they're wrong, their stake goes to the winners.
+*   **Copy-Staking:** Users can follow top experts and stake alongside them.
+*   **Immutable Track Record:** Every win, loss, and stat is cryptographically stored on-chain.
+*   **Dynamic Leaderboard:** Auto-aggregates expert credentialing points and ranks top predictors without a backend server.
+*   **Dark Glass UI:** Sleek, animated Web3 native frontend using React & Ethers.js.
 
 ---
 
-## Step 4 — Set Up the Project
+## 🛠 Tech Stack
+
+*   **Smart Contracts:** Solidity, Hardhat
+*   **Frontend:** React, HTML, CSS, JavaScript (Vanilla ES6 + Ethers.js v6)
+*   **Blockchain Network:** Shardeum Mezame (Chain ID: 8119)
+*   **Hosting:** Vercel
+
+---
+
+## 🌍 Testnet Contract Information
+
+The core logic has been deployed and verified on the **Shardeum Mezame Testnet**.
+
+*   **Network:** Shardeum Mezame Testnet (8119)
+*   **RPC Endpoint:** `https://api-mezame.shardeum.org`
+*   **Currency:** SHM
+*   **ProofMarket Contract:** `0xEaAA32CA5CF0B24c95DF9f96Ba45b22e2D52c93F`
+
+---
+
+## 💻 Running the App Locally
+
+To run the React node locally and test the dApp:
 
 ```bash
-# Install dependencies
+# 1. Clone the repository
+git clone https://github.com/ShoaebMalik19/Prediction-Market.git
+cd Prediction-Market
+
+# 2. Navigate to the frontend-react folder
+cd frontend-react
+
+# 3. Install dependencies
 npm install
 
-# Copy the environment file
-cp .env.example .env
+# 4. Start the Vite server
+npm run dev
 ```
-
-Open `.env` and add your wallet private key:
-
-```
-PRIVATE_KEY=your_private_key_here
-```
-
-> **How to export your private key from MetaMask:**
-> MetaMask → Account Details → **"Show private key"** → enter your password → copy the key
-
-> **Never share your private key with anyone.**
+Open `http://localhost:5173` in your browser.
 
 ---
 
-## Step 5 — Compile & Deploy
+## 🤝 Build & Deployment (Vercel)
 
-```bash
-# Compile the contracts
-npm run compile
+The ProofMarket app is uniquely structured to seamlessly deploy to Vercel without configuring a custom proxy!
 
-# Deploy to Shardeum testnet
-npm run deploy
-```
+1. Import the repository into Vercel.
+2. Under **Project Settings**, change the `Root Directory` to `frontend-react`.
+3. Vercel automatically runs `npm run build` and serves both the React animated Hero and the nested HTML Web3 components natively.
 
-If successful, you'll see your contract addresses and links to the block explorer printed in the terminal.
-
----
-
-## Useful Links
-
-| Resource | Link |
-|---|---|
-| Shardeum Docs | https://docs.shardeum.org |
-| Testnet Explorer | https://explorer-mezame.shardeum.org |
-| Faucet (Discord) | https://discord.com/channels/933959587462254612/1423751569454661632 |
-| Shardeum Discord | https://discord.com/invite/shardeum |
-| Hardhat Docs | https://hardhat.org/docs |
+*Built for the Shardeum Hackathon.* 🚀
