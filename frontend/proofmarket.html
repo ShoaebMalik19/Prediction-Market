@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>ProofMarket — Bet on Experts, Not the Crowd</title>
+<meta name="description" content="A skin-in-the-game prediction market on Shardeum. Experts stake SHM to post predictions. Followers copy-stake."/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.13.0/dist/ethers.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f0f1a;--surface:rgba(255,255,255,0.04);--border:rgba(255,255,255,0.08);
+  --blue:#4f8ef7;--purple:#8b5cf6;--green:#22c55e;--red:#ef4444;--yellow:#eab308;
+  --text:#e2e8f0;--muted:#64748b;--card-blur:blur(12px);
+}
+html{scroll-behavior:smooth}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80% 60% at 50% -20%,rgba(79,142,247,0.12),transparent),radial-gradient(ellipse 60% 50% at 80% 80%,rgba(139,92,246,0.08),transparent);pointer-events:none;z-index:0}
+
+/* ── Navbar ── */
+nav{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:14px 24px;background:rgba(15,15,26,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--border)}
+.nav-logo{font-size:1.3rem;font-weight:800;background:linear-gradient(135deg,var(--blue),var(--purple));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;cursor:pointer;user-select:none}
+.nav-links{display:flex;gap:4px}
+.nav-link{padding:8px 16px;border-radius:8px;font-size:0.875rem;font-weight:500;color:var(--muted);cursor:pointer;transition:all .2s;border:none;background:none}
+.nav-link:hover,.nav-link.active{color:var(--text);background:var(--surface)}
+.nav-right{display:flex;align-items:center;gap:10px}
+.wallet-pill{display:none;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 14px;font-size:0.8rem}
+.wallet-pill.visible{display:flex}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--green);flex-shrink:0;box-shadow:0 0 6px var(--green)}
+.addr{font-family:monospace;color:var(--blue)}
+.bal{color:var(--muted)}
+#connectBtn{padding:9px 20px;border:none;border-radius:10px;background:linear-gradient(135deg,var(--blue),var(--purple));color:#fff;font-size:0.875rem;font-weight:600;cursor:pointer;transition:opacity .2s,transform .15s}
+#connectBtn:hover{opacity:.88;transform:scale(1.02)}
+#connectBtn.connected{background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.3);color:var(--green)}
+
+/* ── Layout ── */
+.page{display:none;min-height:calc(100vh - 65px);padding:32px 24px;max-width:1200px;margin:0 auto;position:relative;z-index:1}
+.page.active{display:block}
+
+/* ── Cards ── */
+.glass{background:var(--surface);border:1px solid var(--border);border-radius:20px;backdrop-filter:var(--card-blur)}
+.glass:hover{border-color:rgba(255,255,255,0.13)}
+
+/* ── Buttons ── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 22px;border:none;border-radius:12px;font-size:0.875rem;font-weight:600;cursor:pointer;transition:all .2s}
+.btn-primary{background:linear-gradient(135deg,var(--blue),var(--purple));color:#fff}
+.btn-primary:hover{opacity:.88;transform:scale(1.02)}
+.btn-primary:disabled{background:rgba(255,255,255,.07);color:var(--muted);cursor:not-allowed;transform:none;opacity:1}
+.btn-sm{padding:7px 14px;font-size:0.78rem;border-radius:9px}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text)}
+.btn-outline:hover{border-color:var(--blue);color:var(--blue)}
+.btn-green{background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.3);color:var(--green)}
+.btn-green:hover{background:rgba(34,197,94,.25)}
+
+/* ── Badges ── */
+.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:0.72rem;font-weight:600;letter-spacing:.03em}
+.badge-crypto{background:rgba(79,142,247,.15);color:var(--blue);border:1px solid rgba(79,142,247,.25)}
+.badge-sports{background:rgba(34,197,94,.15);color:var(--green);border:1px solid rgba(34,197,94,.25)}
+.badge-politics{background:rgba(234,179,8,.15);color:var(--yellow);border:1px solid rgba(234,179,8,.25)}
+.badge-other{background:rgba(139,92,246,.15);color:var(--purple);border:1px solid rgba(139,92,246,.25)}
+.acc-high{background:rgba(34,197,94,.15);color:var(--green);border:1px solid rgba(34,197,94,.3)}
+.acc-mid{background:rgba(234,179,8,.15);color:var(--yellow);border:1px solid rgba(234,179,8,.3)}
+.acc-low{background:rgba(239,68,68,.15);color:var(--red);border:1px solid rgba(239,68,68,.3)}
+
+/* ── Section Headers ── */
+.section-title{font-size:1.6rem;font-weight:800;margin-bottom:6px}
+.section-sub{font-size:0.9rem;color:var(--muted);margin-bottom:28px}
+
+/* ── Filter Bar ── */
+.filter-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px}
+.filter-btn{padding:7px 18px;border-radius:10px;font-size:0.83rem;font-weight:500;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--muted);transition:all .2s}
+.filter-btn:hover,.filter-btn.active{background:var(--surface);color:var(--text);border-color:rgba(79,142,247,.4);color:var(--blue)}
+
+/* ── Prediction Grid ── */
+.pred-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px}
+
+/* ── Prediction Card ── */
+.pred-card{padding:22px;transition:transform .2s,border-color .2s;cursor:default}
+.pred-card:hover{transform:translateY(-2px);border-color:rgba(79,142,247,.25)}
+.pred-q{font-size:1rem;font-weight:600;line-height:1.45;margin:10px 0 14px}
+.meta-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.expert-link{font-size:0.78rem;font-family:monospace;color:var(--blue);cursor:pointer;opacity:.8}
+.expert-link:hover{opacity:1;text-decoration:underline}
+
+/* ── Stake Bar ── */
+.stake-bar-wrap{margin:12px 0}
+.stake-labels{display:flex;justify-content:space-between;font-size:0.75rem;margin-bottom:5px}
+.yes-label{color:var(--green)}
+.no-label{color:var(--red)}
+.stake-bar{height:8px;border-radius:4px;background:rgba(239,68,68,.25);overflow:hidden}
+.stake-bar-fill{height:100%;background:linear-gradient(90deg,var(--green),rgba(34,197,94,.7));border-radius:4px;transition:width .4s ease}
+
+/* ── Countdown ── */
+.countdown{font-size:0.78rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.countdown.urgent{color:var(--red)}
+
+/* ── Stats Row ── */
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px;margin-bottom:32px}
+.stat-card{padding:20px 22px}
+.stat-label{font-size:0.75rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:6px}
+.stat-value{font-size:1.5rem;font-weight:700}
+
+/* ── Form ── */
+.form-card{padding:30px;max-width:620px}
+.form-group{margin-bottom:20px}
+.form-label{display:block;font-size:0.83rem;font-weight:600;margin-bottom:8px;color:var(--muted)}
+.form-input,.form-select{width:100%;padding:11px 14px;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:11px;color:var(--text);font-size:0.9rem;font-family:'Inter',sans-serif;outline:none;transition:border-color .2s}
+.form-input:focus,.form-select:focus{border-color:var(--blue)}
+.form-select option{background:#1a1a2e;color:var(--text)}
+.toggle-row{display:flex;gap:10px}
+.toggle-opt{flex:1;padding:11px;border-radius:11px;border:1px solid var(--border);background:transparent;color:var(--muted);font-weight:600;font-size:0.88rem;cursor:pointer;transition:all .2s;text-align:center}
+.toggle-opt.yes.sel{border-color:var(--green);background:rgba(34,197,94,.12);color:var(--green)}
+.toggle-opt.no.sel{border-color:var(--red);background:rgba(239,68,68,.12);color:var(--red)}
+
+/* ── Table ── */
+.table-wrap{overflow-x:auto;border-radius:16px;border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse}
+thead tr{background:rgba(255,255,255,.03)}
+th{padding:12px 16px;text-align:left;font-size:0.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:13px 16px;font-size:0.875rem;border-bottom:1px solid rgba(255,255,255,.04)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,.02)}
+
+/* ── Modal ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);z-index:200;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.open{display:flex}
+.modal{background:#16162a;border:1px solid var(--border);border-radius:20px;padding:28px;width:100%;max-width:420px;position:relative}
+.modal-close{position:absolute;top:16px;right:16px;background:none;border:none;color:var(--muted);font-size:1.3rem;cursor:pointer;line-height:1}
+.modal-close:hover{color:var(--text)}
+.modal h3{font-size:1.1rem;font-weight:700;margin-bottom:6px}
+.modal-q{font-size:0.83rem;color:var(--muted);margin-bottom:20px;line-height:1.5}
+
+/* ── Toast ── */
+#toastWrap{position:fixed;bottom:24px;right:24px;z-index:300;display:flex;flex-direction:column;gap:10px;pointer-events:none}
+.toast{padding:13px 18px;border-radius:12px;font-size:0.85rem;font-weight:500;pointer-events:auto;animation:slideIn .3s ease;max-width:320px}
+.toast-success{background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.3);color:var(--green)}
+.toast-error{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);color:var(--red)}
+.toast-info{background:rgba(79,142,247,.15);border:1px solid rgba(79,142,247,.3);color:var(--blue)}
+@keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:none}}
+
+/* ── Empty ── */
+.empty{text-align:center;padding:60px 20px;color:var(--muted)}
+.empty svg{opacity:.3;margin-bottom:16px}
+
+/* ── Spinner ── */
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── Responsive ── */
+@media(max-width:640px){
+  nav{padding:12px 14px}
+  .nav-links{display:none}
+  .page{padding:20px 14px}
+  .pred-grid{grid-template-columns:1fr}
+  .stats-row{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav>
+  <div class="nav-logo" onclick="navigate('home')">Proof<span style="color:var(--blue)">Market</span></div>
+  <div class="nav-links">
+    <button class="nav-link active" id="nl-home"     onclick="navigate('home')">🏠 Markets</button>
+    <button class="nav-link"        id="nl-create"   onclick="navigate('create')">✨ Create</button>
+    <button class="nav-link"        id="nl-mystakes" onclick="navigate('mystakes')">📌 My Stakes</button>
+  </div>
+  <div class="nav-right">
+    <div class="wallet-pill" id="walletPill">
+      <div class="dot"></div>
+      <span class="addr" id="navAddr"></span>
+      <span class="bal" id="navBal"></span>
+    </div>
+    <button id="connectBtn" onclick="connectWallet()">Connect Wallet</button>
+  </div>
+</nav>
+
+<!-- ═══════════════════════════ HOME PAGE ═══════════════════════════ -->
+<div class="page active" id="page-home">
+  <div class="section-title">Open Prediction Markets</div>
+  <div class="section-sub">Stake SHM on expert predictions. Losers fund the winners.</div>
+  <div class="filter-bar">
+    <button class="filter-btn active" onclick="filterPredictions('All',this)">All</button>
+    <button class="filter-btn" onclick="filterPredictions('Crypto',this)">🪙 Crypto</button>
+    <button class="filter-btn" onclick="filterPredictions('Sports',this)">⚽ Sports</button>
+    <button class="filter-btn" onclick="filterPredictions('Politics',this)">🗳️ Politics</button>
+    <button class="filter-btn" onclick="filterPredictions('Other',this)">🔮 Other</button>
+  </div>
+  <div class="pred-grid" id="predGrid">
+    <div class="empty"><p>Connect wallet to load predictions</p></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ EXPERT PAGE ═══════════════════════════ -->
+<div class="page" id="page-expert">
+  <button class="btn btn-outline btn-sm" onclick="navigate('home')" style="margin-bottom:20px">← Back</button>
+  <div id="expertContent"></div>
+</div>
+
+<!-- ═══════════════════════════ CREATE PAGE ═══════════════════════════ -->
+<div class="page" id="page-create">
+  <div class="section-title">Create a Prediction</div>
+  <div class="section-sub">Stake your SHM to back your call. Your track record is permanent.</div>
+  <div class="glass form-card">
+    <div class="form-group">
+      <label class="form-label">Prediction Question</label>
+      <input class="form-input" id="fq" type="text" placeholder="e.g. Will ETH cross $4000 by April 30?"/>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Category</label>
+      <select class="form-select" id="fcat">
+        <option value="Crypto">🪙 Crypto</option>
+        <option value="Sports">⚽ Sports</option>
+        <option value="Politics">🗳️ Politics</option>
+        <option value="Other">🔮 Other</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Resolution Deadline</label>
+      <input class="form-input" id="fdl" type="datetime-local"/>
+    </div>
+    <div class="form-group">
+      <label class="form-label">I'm staking on</label>
+      <div class="toggle-row">
+        <button class="toggle-opt yes sel" id="tYes" onclick="setStakeSide(true)">✅ YES</button>
+        <button class="toggle-opt no"     id="tNo"  onclick="setStakeSide(false)">❌ NO</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Stake Amount (SHM — min 0.01)</label>
+      <input class="form-input" id="famt" type="number" min="0.01" step="0.01" placeholder="0.01"/>
+    </div>
+    <button class="btn btn-primary" id="createBtn" onclick="createPrediction()" style="width:100%">
+      🚀 Create &amp; Stake Prediction
+    </button>
+    <div id="createStatus" style="margin-top:14px;font-size:0.83rem;color:var(--blue);min-height:18px"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ MY STAKES PAGE ═══════════════════════════ -->
+<div class="page" id="page-mystakes">
+  <div class="section-title">My Stakes</div>
+  <div class="section-sub">All predictions you've staked on. Claim rewards when resolved.</div>
+  <div id="myStakesContent">
+    <div class="empty"><p>Connect wallet to see your stakes</p></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ STAKE MODAL ═══════════════════════════ -->
+<div class="modal-overlay" id="stakeModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <h3>Stake on Prediction</h3>
+    <p class="modal-q" id="modalQ"></p>
+    <div class="toggle-row" style="margin-bottom:16px">
+      <button class="toggle-opt yes sel" id="mYes" onclick="setModalSide(true)">✅ YES</button>
+      <button class="toggle-opt no"      id="mNo"  onclick="setModalSide(false)">❌ NO</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Amount (SHM)</label>
+      <input class="form-input" id="mAmt" type="number" min="0.001" step="0.001" placeholder="0.1"/>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;font-size:0.78rem;color:var(--muted);margin-bottom:16px">
+      <span>YES Pool: <strong id="mYesPool" style="color:var(--green)">—</strong></span>
+      <span>·</span>
+      <span>NO Pool: <strong id="mNoPool" style="color:var(--red)">—</strong></span>
+    </div>
+    <button class="btn btn-primary" id="stakeBtn" onclick="submitStake()" style="width:100%">
+      Confirm Stake
+    </button>
+    <div id="stakeStatus" style="margin-top:12px;font-size:0.82rem;color:var(--blue);min-height:16px"></div>
+  </div>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div id="toastWrap"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// CONFIG — paste your deployed contract address here (or use .env)
+// ═══════════════════════════════════════════════════════════════════
+const CONTRACT_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3"; // Deployed on local Hardhat node
+
+const SPHINX_CHAIN = {
+  chainId: '0x7A69',  // 31337 — Local Hardhat Network
+  chainName: 'Hardhat Local',
+  nativeCurrency: { name:'ETH', symbol:'ETH', decimals:18 },
+  rpcUrls: ['http://127.0.0.1:8545'],
+  blockExplorerUrls: []
+};
+const TARGET_CHAIN_ID = 31337;
+
+const ABI = [
+  "function createPrediction(string,string,uint256,bool) payable",
+  "function followPrediction(uint256,bool) payable",
+  "function stakePrediction(uint256,bool) payable",
+  "function resolvePrediction(uint256,bool)",
+  "function claimReward(uint256)",
+  "function getPrediction(uint256) view returns (tuple(uint256,address,string,string,uint256,uint256,uint256,bool,bool,bool))",
+  "function getExpertProfile(address) view returns (tuple(uint256,uint256,uint256,uint256))",
+  "function getAccuracyPercent(address) view returns (uint256)",
+  "function getAllPredictionIds() view returns (uint256[])",
+  "function predictionCount() view returns (uint256)",
+  "function userStakes(uint256,address,bool) view returns (uint256)",
+  "function hasClaimed(uint256,address) view returns (bool)",
+  "function MIN_FOLLOWER_STAKE() view returns (uint256)",
+  "event PredictionCreated(uint256 indexed,address indexed,string,uint256)",
+  "event PredictionFollowed(uint256 indexed,address indexed,uint256,bool)",
+  "event Staked(uint256 indexed,address indexed,uint256,bool)",
+  "event Resolved(uint256 indexed,bool)",
+  "event RewardClaimed(uint256 indexed,address indexed,uint256)"
+];
+
+
+// ═══════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════
+let provider, signer, account, contract;
+let allPredictions = [];
+let currentFilter  = 'All';
+let modalPredId    = null;
+let modalSide      = true;
+let createSide     = true;
+
+// ═══════════════════════════════════════════════════════════════════
+// WALLET
+// ═══════════════════════════════════════════════════════════════════
+async function connectWallet() {
+  if (!window.ethereum) {
+    toast('MetaMask not detected. Please install it.', 'error'); return;
+  }
+  try {
+    await window.ethereum.request({ method:'eth_requestAccounts' });
+    provider = new ethers.BrowserProvider(window.ethereum);
+    signer   = await provider.getSigner();
+    account  = await signer.getAddress();
+    contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+    await updateNav();
+    await loadPredictions();
+    await loadMyStakes();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function updateNav() {
+  const net = await provider.getNetwork();
+  const bal = await provider.getBalance(account);
+  document.getElementById('navAddr').textContent = shortAddr(account);
+  document.getElementById('navBal').textContent  = parseFloat(ethers.formatEther(bal)).toFixed(3)+' SHM';
+  document.getElementById('walletPill').classList.add('visible');
+  const btn = document.getElementById('connectBtn');
+  btn.textContent = shortAddr(account);
+  btn.classList.add('connected');
+  // Prompt network switch if needed
+  if (Number(net.chainId) !== TARGET_CHAIN_ID) {
+    toast('Switch to Hardhat Local network (Chain 31337, RPC: http://127.0.0.1:8545)','info');
+    try {
+      await window.ethereum.request({method:'wallet_addEthereumChain',params:[SPHINX_CHAIN]});
+    } catch(_){}
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════════════════════
+function navigate(page, param) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+  if (page === 'home') {
+    document.getElementById('page-home').classList.add('active');
+    document.getElementById('nl-home').classList.add('active');
+  } else if (page === 'create') {
+    document.getElementById('page-create').classList.add('active');
+    document.getElementById('nl-create').classList.add('active');
+  } else if (page === 'mystakes') {
+    document.getElementById('page-mystakes').classList.add('active');
+    document.getElementById('nl-mystakes').classList.add('active');
+  } else if (page === 'expert') {
+    document.getElementById('page-expert').classList.add('active');
+    renderExpertPage(param);
+  }
+  window.scrollTo(0,0);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// LOAD PREDICTIONS
+// ═══════════════════════════════════════════════════════════════════
+async function loadPredictions() {
+  const grid = document.getElementById('predGrid');
+  grid.innerHTML = '<div class="empty"><div class="spinner"></div><p style="margin-top:12px">Loading predictions…</p></div>';
+  try {
+    if (!contract) { grid.innerHTML='<div class="empty"><p>Connect wallet to see predictions</p></div>'; return; }
+    const count = await contract.predictionCount();
+    allPredictions = [];
+    const ids = [];
+    for (let i = 1; i <= Number(count); i++) ids.push(i);
+    const fetched = await Promise.all(ids.map(id => contract.getPrediction(id)));
+    for (let i = 0; i < fetched.length; i++) {
+      const r = fetched[i];
+      allPredictions.push({
+        id: Number(r[0]), creator: r[1], question: r[2], category: r[3],
+        deadline: Number(r[4]), totalYesStake: r[5], totalNoStake: r[6],
+        resolved: r[7], outcome: r[8], creatorStakedOn: r[9]
+      });
+    }
+    renderGrid();
+  } catch(e) {
+    grid.innerHTML=`<div class="empty"><p style="color:var(--red)">Failed to load: ${e.message}</p></div>`;
+  }
+}
+
+async function renderGrid() {
+  const grid = document.getElementById('predGrid');
+  let preds = currentFilter === 'All'
+    ? allPredictions
+    : allPredictions.filter(p => p.category === currentFilter);
+  preds = preds.filter(p => !p.resolved);
+  if (!preds.length) {
+    grid.innerHTML='<div class="empty"><p>No open predictions in this category yet.</p></div>'; return;
+  }
+  const cards = await Promise.all(preds.map(p => buildCard(p)));
+  grid.innerHTML = cards.join('');
+}
+
+async function buildCard(p) {
+  let acc = 0;
+  try { if (contract) acc = Number(await contract.getAccuracyPercent(p.creator)); } catch(_){}
+  const yes = parseFloat(ethers.formatEther(p.totalYesStake));
+  const no  = parseFloat(ethers.formatEther(p.totalNoStake));
+  const tot = yes + no;
+  const yesPct = tot > 0 ? Math.round((yes/tot)*100) : 50;
+  const cd  = countdown(p.deadline);
+  const accClass = acc >= 60 ? 'acc-high' : acc >= 40 ? 'acc-mid' : 'acc-low';
+  const catClass = catBadge(p.category);
+  const urgent= p.deadline - Date.now()/1000 < 86400;
+  return `
+<div class="glass pred-card">
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+    <span class="badge ${catClass}">${p.category}</span>
+    <span class="badge ${accClass}">${acc}% accurate</span>
+  </div>
+  <div class="pred-q">${escHtml(p.question)}</div>
+  <div class="meta-row">
+    <span style="font-size:0.72rem;color:var(--muted)">by</span>
+    <span class="expert-link" onclick="navigate('expert','${p.creator}')">${shortAddr(p.creator)}</span>
+    <span style="margin-left:auto;font-size:0.72rem;color:var(--muted)">staked on <strong style="color:${p.creatorStakedOn?'var(--green)':'var(--red)'}">${p.creatorStakedOn?'YES':'NO'}</strong></span>
+  </div>
+  <div class="stake-bar-wrap">
+    <div class="stake-labels">
+      <span class="yes-label">YES ${yes.toFixed(3)} SHM (${yesPct}%)</span>
+      <span class="no-label">NO ${no.toFixed(3)} SHM (${100-yesPct}%)</span>
+    </div>
+    <div class="stake-bar"><div class="stake-bar-fill" style="width:${yesPct}%"></div></div>
+  </div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px">
+    <span class="countdown${urgent?' urgent':''}">⏱ ${cd}</span>
+    <button class="btn btn-primary btn-sm" onclick="openModal(${p.id},'${escHtml(p.question)}',${yes},${no})">Stake</button>
+  </div>
+</div>`;
+}
+
+function filterPredictions(cat, btn) {
+  currentFilter = cat;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderGrid();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// STAKE MODAL
+// ═══════════════════════════════════════════════════════════════════
+function openModal(id, question, yes, no) {
+  if (!account) { toast('Connect your wallet first.','error'); return; }
+  modalPredId = id; modalSide = true;
+  document.getElementById('modalQ').textContent = question;
+  document.getElementById('mYesPool').textContent = yes.toFixed(3)+' SHM';
+  document.getElementById('mNoPool').textContent  = no.toFixed(3)+' SHM';
+  document.getElementById('mAmt').value = '';
+  document.getElementById('stakeStatus').textContent = '';
+  setModalSide(true);
+  document.getElementById('stakeModal').classList.add('open');
+}
+function closeModal() { document.getElementById('stakeModal').classList.remove('open'); }
+function setModalSide(yes) {
+  modalSide = yes;
+  document.getElementById('mYes').className='toggle-opt yes'+(yes?' sel':'');
+  document.getElementById('mNo').className ='toggle-opt no'+(!yes?' sel':'');
+}
+async function submitStake() {
+  const amt = parseFloat(document.getElementById('mAmt').value);
+  if (!amt || amt <= 0) { toast('Enter a valid amount.','error'); return; }
+  const btn = document.getElementById('stakeBtn');
+  const st  = document.getElementById('stakeStatus');
+  btn.disabled = true; btn.innerHTML='<span class="spinner"></span> Staking…';
+  st.textContent = 'Sending transaction…';
+  try {
+    const tx = await contract.stakePrediction(modalPredId, modalSide, {
+      value: ethers.parseEther(amt.toString())
+    });
+    st.textContent = 'Waiting for confirmation…';
+    await tx.wait();
+    toast(`Staked ${amt} SHM on ${modalSide?'YES':'NO'}!`, 'success');
+    closeModal();
+    await loadPredictions();
+    await loadMyStakes();
+  } catch(e) {
+    toast(e.reason||e.message, 'error');
+    st.textContent = '';
+  }
+  btn.disabled=false; btn.textContent='Confirm Stake';
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// CREATE PREDICTION
+// ═══════════════════════════════════════════════════════════════════
+function setStakeSide(yes) {
+  createSide = yes;
+  document.getElementById('tYes').className='toggle-opt yes'+(yes?' sel':'');
+  document.getElementById('tNo').className ='toggle-opt no'+(!yes?' sel':'');
+}
+async function createPrediction() {
+  if (!account) { toast('Connect your wallet first.','error'); return; }
+  const q   = document.getElementById('fq').value.trim();
+  const cat = document.getElementById('fcat').value;
+  const dl  = document.getElementById('fdl').value;
+  const amt = parseFloat(document.getElementById('famt').value);
+  if (!q)           { toast('Enter a prediction question.','error'); return; }
+  if (!dl)          { toast('Select a deadline.','error'); return; }
+  if (!amt||amt<0.01){ toast('Minimum stake is 0.01 SHM.','error'); return; }
+  const deadline = Math.floor(new Date(dl).getTime()/1000);
+  if (deadline <= Math.floor(Date.now()/1000)) { toast('Deadline must be in the future.','error'); return; }
+
+  const btn = document.getElementById('createBtn');
+  const st  = document.getElementById('createStatus');
+  btn.disabled=true; btn.innerHTML='<span class="spinner"></span> Creating…';
+  st.textContent='Sending transaction…';
+  try {
+    const tx = await contract.createPrediction(q, cat, deadline, createSide, {
+      value: ethers.parseEther(amt.toString())
+    });
+    st.textContent='Waiting for confirmation…';
+    const receipt = await tx.wait();
+    toast('Prediction created! Tx: '+shortAddr(receipt.hash), 'success');
+    st.innerHTML=`✅ Created! Tx: <a href="https://explorer-sphinx.shardeum.org/tx/${receipt.hash}" target="_blank" style="color:var(--blue)">${shortAddr(receipt.hash)}</a>`;
+    document.getElementById('fq').value='';
+    document.getElementById('famt').value='';
+    await loadPredictions();
+  } catch(e) {
+    toast(e.reason||e.message,'error');
+    st.textContent='';
+  }
+  btn.disabled=false; btn.textContent='🚀 Create & Stake Prediction';
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// MY STAKES
+// ═══════════════════════════════════════════════════════════════════
+async function loadMyStakes() {
+  const el = document.getElementById('myStakesContent');
+  if (!account||!contract) { el.innerHTML='<div class="empty"><p>Connect wallet to see your stakes</p></div>'; return; }
+  el.innerHTML='<div class="empty"><div class="spinner"></div><p style="margin-top:12px">Loading…</p></div>';
+  try {
+    const rows = [];
+    for (const p of allPredictions) {
+      const yesStake = await contract.userStakes(p.id, account, true);
+      const noStake  = await contract.userStakes(p.id, account, false);
+      if (yesStake > 0n) rows.push({p, side:true,  amt: yesStake});
+      if (noStake  > 0n) rows.push({p, side:false, amt: noStake});
+    }
+    if (!rows.length) { el.innerHTML='<div class="empty"><p>No stakes yet. Go stake on a prediction!</p></div>'; return; }
+    let html='<div class="table-wrap"><table><thead><tr><th>Question</th><th>Category</th><th>My Stake</th><th>Side</th><th>Status</th><th>Action</th></tr></thead><tbody>';
+    for (const {p,side,amt} of rows) {
+      const claimed = p.resolved ? await contract.hasClaimed(p.id,account) : false;
+      const won = p.resolved && p.outcome === side;
+      const shmAmt = parseFloat(ethers.formatEther(amt)).toFixed(4);
+      const statusTxt = !p.resolved ? '<span style="color:var(--blue)">Open</span>'
+        : won ? '<span style="color:var(--green)">✅ Won</span>'
+              : '<span style="color:var(--red)">❌ Lost</span>';
+      const action = (p.resolved && won && !claimed)
+        ? `<button class="btn btn-green btn-sm" onclick="claimReward(${p.id})">Claim</button>`
+        : (p.resolved && won && claimed) ? '<span style="color:var(--muted);font-size:0.78rem">Claimed</span>' : '—';
+      html+=`<tr>
+        <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escHtml(p.question)}">${escHtml(p.question)}</td>
+        <td><span class="badge ${catBadge(p.category)}">${p.category}</span></td>
+        <td>${shmAmt} SHM</td>
+        <td style="color:${side?'var(--green)':'var(--red)'};font-weight:600">${side?'YES':'NO'}</td>
+        <td>${statusTxt}</td>
+        <td>${action}</td>
+      </tr>`;
+    }
+    html+='</tbody></table></div>';
+    el.innerHTML=html;
+  } catch(e) { el.innerHTML=`<div class="empty"><p style="color:var(--red)">Error: ${e.message}</p></div>`; }
+}
+
+async function claimReward(id) {
+  try {
+    toast('Claiming reward…','info');
+    const tx = await contract.claimReward(id);
+    await tx.wait();
+    toast('Reward claimed!','success');
+    await loadMyStakes();
+  } catch(e) { toast(e.reason||e.message,'error'); }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// EXPERT PAGE
+// ═══════════════════════════════════════════════════════════════════
+async function renderExpertPage(addr) {
+  const el = document.getElementById('expertContent');
+  el.innerHTML='<div class="empty"><div class="spinner"></div></div>';
+  try {
+    let prof = {totalPredictions:0n,correctPredictions:0n,totalStaked:0n,totalEarned:0n};
+    let acc = 0;
+    if (contract) {
+      try { prof = await contract.getExpertProfile(addr); } catch(_){}
+      try { acc  = Number(await contract.getAccuracyPercent(addr)); } catch(_){}
+    }
+    const tp  = Number(prof[0]), cp = Number(prof[1]);
+    const ts  = parseFloat(ethers.formatEther(prof[2])).toFixed(3);
+    const te  = parseFloat(ethers.formatEther(prof[3])).toFixed(3);
+    const accClass = acc>=60?'acc-high':acc>=40?'acc-mid':'acc-low';
+    const expertPreds = allPredictions.filter(p=>p.creator.toLowerCase()===addr.toLowerCase());
+    let rows='';
+    for (const p of expertPreds) {
+      const res = p.resolved ? (p.outcome===p.creatorStakedOn?'<span style="color:var(--green)">✅ Correct</span>':'<span style="color:var(--red)">❌ Wrong</span>') : '<span style="color:var(--blue)">Pending</span>';
+      const tot = parseFloat(ethers.formatEther(p.totalYesStake+p.totalNoStake)).toFixed(3);
+      rows+=`<tr>
+        <td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(p.question)}</td>
+        <td><span class="badge ${catBadge(p.category)}">${p.category}</span></td>
+        <td>${res}</td>
+        <td>${tot} SHM</td>
+        <td style="color:var(--muted);font-size:0.78rem">${new Date(p.deadline*1000).toLocaleDateString()}</td>
+      </tr>`;
+    }
+    el.innerHTML=`
+<div style="display:flex;align-items:center;gap:14px;margin-bottom:24px;flex-wrap:wrap">
+  <div style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--purple));display:flex;align-items:center;justify-content:center;font-size:1.3rem">🧠</div>
+  <div>
+    <div style="font-size:1.4rem;font-weight:800">Expert Profile</div>
+    <div style="font-family:monospace;font-size:0.85rem;color:var(--blue)">${addr}</div>
+  </div>
+  <span class="badge ${accClass}" style="margin-left:auto">${acc}% Accuracy</span>
+</div>
+<div class="stats-row">
+  <div class="glass stat-card"><div class="stat-label">Total Predictions</div><div class="stat-value">${tp}</div></div>
+  <div class="glass stat-card"><div class="stat-label">Correct</div><div class="stat-value" style="color:var(--green)">${cp}</div></div>
+  <div class="glass stat-card"><div class="stat-label">Total Staked</div><div class="stat-value">${ts} SHM</div></div>
+  <div class="glass stat-card"><div class="stat-label">Total Earned</div><div class="stat-value" style="color:var(--green)">${te} SHM</div></div>
+</div>
+<div class="section-title" style="font-size:1.1rem;margin-bottom:16px">Prediction History</div>
+${rows ? `<div class="table-wrap"><table><thead><tr><th>Question</th><th>Category</th><th>Result</th><th>Total Staked</th><th>Deadline</th></tr></thead><tbody>${rows}</tbody></table></div>` : '<div class="empty"><p>No predictions yet.</p></div>'}
+<button class="btn btn-outline" style="margin-top:20px" onclick="alert('Follow feature — UI only. No contract needed!')">⭐ Follow this Expert</button>`;
+  } catch(e) { el.innerHTML=`<p style="color:var(--red)">Error: ${e.message}</p>`; }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════════════════════
+function shortAddr(a) { return a.slice(0,6)+'…'+a.slice(-4); }
+function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function catBadge(c) { return c==='Crypto'?'badge-crypto':c==='Sports'?'badge-sports':c==='Politics'?'badge-politics':'badge-other'; }
+function countdown(ts) {
+  const diff = ts - Math.floor(Date.now()/1000);
+  if (diff<=0) return 'Expired';
+  const d=Math.floor(diff/86400), h=Math.floor((diff%86400)/3600), m=Math.floor((diff%3600)/60);
+  return (d?d+'d ':'')+h+'h '+m+'m';
+}
+function toast(msg, type='info') {
+  const w=document.getElementById('toastWrap');
+  const t=document.createElement('div');
+  t.className=`toast toast-${type}`; t.textContent=msg;
+  w.appendChild(t);
+  setTimeout(()=>t.remove(),4500);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════
+// Set min deadline to now+1h
+(function() {
+  const now = new Date(Date.now()+3600000);
+  const pad = n=>String(n).padStart(2,'0');
+  document.getElementById('fdl').value =
+    `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+})();
+
+// Countdown refresh
+setInterval(()=>{
+  document.querySelectorAll('.countdown').forEach(el=>{
+    const ts=el.dataset.ts;
+    if(ts) el.textContent='⏱ '+countdown(Number(ts));
+  });
+},30000);
+
+if (window.ethereum) {
+  window.ethereum.on('accountsChanged', ()=>location.reload());
+  window.ethereum.on('chainChanged',    ()=>location.reload());
+}
+
+// Close modal on overlay click
+document.getElementById('stakeModal').addEventListener('click',function(e){ if(e.target===this) closeModal(); });
+</script>
+</body>
+</html>
