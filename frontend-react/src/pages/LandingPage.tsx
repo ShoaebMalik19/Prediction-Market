@@ -1,4 +1,4 @@
-import React from "react";
+// import React from "react";
 import NeuralBackground from "@/components/ui/flow-field-background";
 import { ArrowRight, Sparkles, ShieldCheck, TrendingUp, Users } from "lucide-react";
 
