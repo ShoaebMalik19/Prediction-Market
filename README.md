@@ -6,12 +6,6 @@ No more fake gurus. Complete on-chain transparency. True skin in the game.
 
 ---
 
-## 🎥 Live Demo Video
-
-> **[▶️ Watch the Demo Video Here] (Replace this with your YouTube or Loom Link!)**
-
----
-
 ## 🚀 Key Features
 
 *   **Skin in the Game:** Anyone can create a prediction, but it costs a minimum stake of SHM to do so. If they're wrong, their stake goes to the winners.
